@@ -6,5 +6,8 @@
     "background":{
       "service_worker":"background2.js"
     },
-    "permissions": ["storage", "tabs" ]
+    "permissions": ["storage", "tabs", "scripting"],
+    "host_permissions": [
+      "*://*/*"
+  ]
   }
