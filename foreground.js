@@ -1,5 +1,5 @@
 //?Se obtienen los nombres de los profesores
-let nombres=[]
+let nombres=[];
 let spans=document.getElementsByTagName("span");
 for(i=0; i<spans.length;i++){
     if(spans[i].innerText=="Profesor"){

@@ -4,7 +4,7 @@
     "version": "1.0",
     "manifest_version": 3,
     "background":{
-      "service_worker":"background2.js"
+      "service_worker":"background.js"
     },
     "permissions": ["storage", "tabs", "scripting"],
     "host_permissions": [
