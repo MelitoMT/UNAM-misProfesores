@@ -7,6 +7,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab)=>{
             lastFocusedWindow: true
         }, function(tabs) {
             let tab = tabs[0];
+            //?Arreglar reg primer .+
             if(/https:\/\/www.fciencias.unam.mx\/docencia\/horarios\/.+\/.+\/.+/.test(tab.url)){
                 chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['foreground.js'] });
             }
@@ -23,11 +24,44 @@ chrome.runtime.onMessage.addListener((message, sender, senRequest) => {
         nombres.push(temp[0]);
         ape.push(temp[temp.length - 2]+' '+temp[temp.length - 1]);
     });
-    obtenerInfoProfes(nombres,ape);
+    obtenerInfoProfes(nombres,ape, sender.tab.id);
 }
 );
-
-function obtenerInfoProfes(nombres,ape){
+function convertirUnicode(str){
+    let unicodeChars=[225,233,237,243,250,193,201,205,211,218,209,241,252]
+    var strUni='';
+    for(letter in str){
+        if(unicodeChars.includes(str.charCodeAt(letter))){
+            strUni += "\\\\u00"+str.charCodeAt(letter).toString(16);
+        }
+        else{
+            strUni += str[letter];
+        }
+    }
+    return strUni;
+}
+function desconvertirUnicode(str){
+    let removed = str.normalize('NFD').replace(/([^n\u0300-\u036f]|n(?!\u0303(?![\u0300-\u036f])))[\u0300-\u036f]+/gi,'$1').normalize();
+  return removed;
+}
+function hacerRegex(str,opt){
+    let reg=''
+    let strNormal=desconvertirUnicode(str);
+    if(opt){
+        let strSplit= str.split(' ');
+        let strNormalSplit=strNormal.split(' ');
+        if(opt==1){
+            reg +=strSplit[0]+'|'+strNormalSplit[0];
+        }
+        else{
+            reg +=strSplit[1]+'|'+strNormalSplit[1];
+        }
+    }else{
+        reg += strNormal+'|'+str;
+    }
+    return reg;
+}
+function obtenerInfoProfes(nombres,ape,tabid){
     fetch('https://www.misprofesores.com/escuelas/Facultad-de-Ciencias-UNAM_2842')
     .then((res)=>{
         if(res.status==200){
@@ -36,15 +70,28 @@ function obtenerInfoProfes(nombres,ape){
             throw res;
         }
     }).then((info)=>{
-        console.log(info);
-        let profeNom="Eduardo Jos\u00e9".normalize();
-        console.log(profeNom);
-        let txt1="&#92&#92";
-        console.log(txt1);
-        let txt2="&#92";
-        console.log(txt2);
-        let result=info2.normalize().match('Eduardo Jos\u00e9'.normalize())
-        console.log(result);
-
+        let nombresUni=[];
+        let apeUni=[]
+        let infoProfe=[]
+        nombres.forEach(element => {
+            nombresUni.push(convertirUnicode(element));
+        });
+        ape.forEach(element => {
+            apeUni.push(convertirUnicode(element));
+        });
+        for(i=0; i<nombres.length;i++){
+            let regexita= new RegExp('{[^}]*('+hacerRegex(nombres[i])+'|'+hacerRegex(nombresUni[i])+')[^}]*('+hacerRegex(ape[i],1)+'|'+hacerRegex(apeUni[i],1)+')[^}]*('+hacerRegex(ape[i],2)+'|'+hacerRegex(apeUni[i],2)+')[^}]*}','i');
+            if(regexita.test(info)){
+                infoProfe.push(JSON.parse(info.match(regexita)[0]))
+            }
+            else{
+                infoProfe.push(null);
+            }
+        }
+        chrome.tabs.sendMessage(tabid, {inf: infoProfe})
+        chrome.tabs.insertCSS(null, {file:'./misprofes.css'});
+    })
+    .catch((resi)=>{
+        console.log('Error, lo lamentamos...')
     })
 }
